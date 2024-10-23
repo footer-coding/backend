@@ -24,3 +24,5 @@ Powinieneś zobaczyć coś takiego
 REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
 <none>                     <none>              123456789        39 seconds ago      422MB
 ```
+
+Masz tutaj IMAGE ID
