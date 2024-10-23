@@ -1,28 +1,23 @@
 # JAK TO ODPALIĆ?
 
-Na windowsie nawet nie próbuj się z tym bawić, żeby bez dockera to odpalać. Użyj dockera.
+## Windows
+
+Rok 2024. Odwieczni wrogowie - Bill Brama oraz Tim Cock postanawiają połączyć siły w osiągnięciu wspólnego celu - odpalenia tego na windowsie. Wywołało to poruszenie - zarówno w środowisku fanboyów microsoftu jak i jabłka. Nikt nigdy nie podjął się tego wyzwania. Rozwiązanie tego problemu mogłoby zmienić dzieje ludzkości.
+
+Zatrudniają oni 3 topowych programistów z całego świat. Najlepszych w biznesie: zwierza, stacha i cvela. Wszyscy trzej znani są z niekonwencjonalnych pomysłów oraz szokujących wyników z egzaminu zawodowego.
+
+Zwierzu wziął rke, stachu powiedział że on tylko na forze pracuje, a cvel nawet kodu nie odpalił, bo mu płytke porysowali.
+
+Zadbaj o swoje zdrowie psychiczne. Użyj dockera
+
+## Docker
 
 ```
-docker build .
+docker compose up
 ```
 
-Następnie odpal
+## Linux/Mac
 
 ```
-docker run <nazwa obrazu>
+swift run
 ```
-
-## Skąd wziąć nazwę obrazu?
-
-```
-docker image ls
-```
-
-Powinieneś zobaczyć coś takiego
-
-```
-REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
-<none>                     <none>              123456789        39 seconds ago      422MB
-```
-
-Masz tutaj IMAGE ID
