@@ -1,5 +1,5 @@
 {
-  "originHash" : "53fd3766791937ea906119c3ea44239b0eeb77fc212683da0e3efd05be54365a",
+  "originHash" : "c2ec7e16abce41e9a874d0922bbbbab06e090fac55b25cca14ef79f7de02c6fc",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "8a7b1be0208e6e9d1d9e0a07713e0c0ebd7a2010",
         "version" : "2.3.0"
+      }
+    },
+    {
+      "identity" : "dotenv",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftpackages/DotEnv.git",
+      "state" : {
+        "revision" : "1f15bb9de727d694af1d003a1a5d7a553752850f",
+        "version" : "3.0.0"
       }
     },
     {

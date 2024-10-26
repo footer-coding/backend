@@ -12,7 +12,8 @@ let package = Package(
         // 🔵 Non-blocking, event-driven networking for Swift. Used for custom executors
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
-        .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.0.0"),
+        .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.0.0"),    
+        .package(url: "https://github.com/swiftpackages/DotEnv.git", from: "3.0.0"),
     ],
     targets: [
         .executableTarget(
@@ -24,6 +25,7 @@ let package = Package(
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentMongoDriver", package: "fluent-mongo-driver"),
                 .product(name: "Vapor", package: "vapor"),
+                .product(name: "DotEnv", package: "DotEnv"),
             ],
             swiftSettings: swiftSettings
         ),
@@ -36,6 +38,7 @@ let package = Package(
             swiftSettings: swiftSettings
         )
     ],
+    
     swiftLanguageModes: [.v5]
 )
 
