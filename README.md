@@ -12,6 +12,8 @@ Zadbaj o swoje zdrowie psychiczne. Użyj dockera
 
 ## Docker
 
+W przypadku Windowsa polecam odpalić dockera na WSLu. Bez WSLa lubi czasami nie działać.
+
 ```
 docker compose up
 ```
