@@ -1,5 +1,5 @@
 {
-  "originHash" : "c2ec7e16abce41e9a874d0922bbbbab06e090fac55b25cca14ef79f7de02c6fc",
+  "originHash" : "1bab1c0059a9f0956c779f76bda7c23ccf99609f2fbf78f6eb949cbfa618c097",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -83,6 +83,24 @@
       }
     },
     {
+      "identity" : "jwt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt.git",
+      "state" : {
+        "revision" : "8ce7280a77ca45711f1b08bc1abfac7a2bb9c97b",
+        "version" : "5.1.0"
+      }
+    },
+    {
+      "identity" : "jwt-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt-kit.git",
+      "state" : {
+        "revision" : "02a0fa600eee1bdc892013d62fc795fc623a5cc3",
+        "version" : "5.1.0"
+      }
+    },
+    {
       "identity" : "mongokitten",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/orlandos-nl/MongoKitten.git",
@@ -143,6 +161,15 @@
       "state" : {
         "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
         "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "swift-certificates",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-certificates.git",
+      "state" : {
+        "revision" : "1fbb6ef21f1525ed5faf4c95207b9c11bea27e94",
+        "version" : "1.6.1"
       }
     },
     {

@@ -1,23 +1,16 @@
 import Vapor
+import JWT
 
 func routes(_ app: Application) throws {
     app.get { req async in
         "It works! dupa"
-    }
+    }  
 
-    app.get("hello") { req async -> String in
-        "Hello, world!"
-    }
+    app.post("verify") {req -> String in
+        let user = try req.auth.require(JWTModel.self)
 
-    app.get("hello" , ":user") {req async -> String in 
-        let user = req.parameters.get("user") ?? "puste jest"
-        return "hello, \(user)!"
-    }
+        print(user)
 
-    app.get("hello", ":user", "age") {req async -> String in
-        return "hello"
+        return "dziala"
     }
-
-    
-    
 }

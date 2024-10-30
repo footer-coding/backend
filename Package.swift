@@ -14,6 +14,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.0.0"),    
         .package(url: "https://github.com/swiftpackages/DotEnv.git", from: "3.0.0"),
+        .package(url: "https://github.com/vapor/jwt.git", from: "5.0.0-rc"),
     ],
     targets: [
         .executableTarget(
@@ -26,6 +27,7 @@ let package = Package(
                 .product(name: "FluentMongoDriver", package: "fluent-mongo-driver"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "DotEnv", package: "DotEnv"),
+                .product(name: "JWT", package: "jwt")
             ],
             swiftSettings: swiftSettings
         ),
