@@ -5,15 +5,12 @@ import DotEnv
 import JWT
 
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     let path = "./.env"
     let env = try DotEnv.read(path: path)
     env.lines 
     env.load()
-    print(ProcessInfo.processInfo.environment["MONGODB_URL"]) 
 
     var logger = Logger(label: "vapor-logger")
     logger.logLevel = .trace
@@ -24,9 +21,11 @@ public func configure(_ app: Application) async throws {
         logger.logLevel = logLevel
     }
     
-    guard let mongoUrl = Environment.get("MONGODB_URL") else {
+    guard let mongoUrl = ProcessInfo.processInfo.environment["MONGODB_URL"] else {
         throw Abort(.internalServerError, reason: "MONGODB_URL not set")
     }
+
+    print (mongoUrl)
     
      try app.databases.use(.mongo(connectionString: mongoUrl), as: .mongo)
 
@@ -35,24 +34,22 @@ public func configure(_ app: Application) async throws {
      app.migrations.add(CreateUser())
     try await app.autoMigrate()
 
-     let path = "./.env"
-    let env = try DotEnv.read(path: path)
-    env.lines 
-    env.load()
-    print(ProcessInfo.processInfo.environment["CLERK_SK"]) 
+    // let path = "./.env"
+    // let env = try DotEnv.read(path: path)
+    // env.lines 
+    // env.load()
+    // print(ProcessInfo.processInfo.environment["CLERK_PK"]) 
 
-    var logger = Logger(label: "key")
-    logger.logLevel = .trace
+    // var logger = Logger(label: "key")
+    // logger.logLevel = .trace
 
-    let logLevel = Environment.get("LOG_LEVEL")
+    // let logLevel = Environment.get("LOG_LEVEL")
     
-    if let logLevel, let logLevel = Logger.Level(rawValue: logLevel) {
-        logger.logLevel = logLevel
-    }
+    // if let logLevel, let logLevel = Logger.Level(rawValue: logLevel) {
+    //     logger.logLevel = logLevel
+    // }
 
-    let clerkSK: String = ProcessInfo.processInfo.environment["CLERK_SK"] 
-
-    let pem = """
+    let clerkPK: String = """
     -----BEGIN PUBLIC KEY-----
     MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsAjc1Pt7Itp7BrEUzd2B
     sdo8Yv0/OTzI/4ZNsRfW1n5qaLBJg/ZsPmwlSRGOx2cN1Lk+5U8lHZYDSuoqSHGz
@@ -62,13 +59,12 @@ public func configure(_ app: Application) async throws {
     niFaRm9TWvyHVr+Q+nDL3ipas6xEjsTr+QxOj0FMTr2VfddB0FWTkaB1uTbyCiCo
     6wIDAQAB
     -----END PUBLIC KEY-----
-    """
+    """ 
 
     // Initialize an RSA key with public pem.
-    let key = try Insecure.RSA.PublicKey(pem: pem)
+    let key = try Insecure.RSA.PublicKey(pem: clerkPK)
 
-    await app.jwt.keys.add(rsa: clerkSK, digestAlgorithm: .sha256)
-
+    await app.jwt.keys.add(rsa: key, digestAlgorithm: .sha256)
 
     //regitser controllers
     //try app.register(collection: UserController())
