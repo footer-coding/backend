@@ -11,6 +11,15 @@ enum Entrypoint {
         
         let app = try await Application.make(env)
 
+        
+        // let corsConfiguration = CORSMiddleware.Configuration(
+        //     allowedOrigin: .all,
+        //     allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
+        //     allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith]
+        // )
+        // let corsMiddleware = CORSMiddleware(configuration: corsConfiguration)
+        // app.middleware.use(corsMiddleware)
+
         // This attempts to install NIO as the Swift Concurrency global executor.
         // You can enable it if you'd like to reduce the amount of context switching between NIO and Swift Concurrency.
         // Note: this has caused issues with some libraries that use `.wait()` and cleanly shutting down.
