@@ -1,0 +1,38 @@
+
+body{
+    margin: 0;
+    padding: 0;
+    background: #F2F2F7;
+    font-family: "Montserrat", sans-serif;
+      
+}
+.container {
+    display: flex;
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh;  
+    text-align: center; 
+}
+
+.centered-div {
+    width: 80%; 
+    max-width: 600px; 
+    padding: 20px; 
+    text-align: center; 
+    border-radius: 8px; 
+}
+
+p{
+	color:black;
+	line-height: 1.2;
+    font-weight: 300;
+    font-size: 20px;
+    margin-bottom: 40px;
+}
+
+@media (max-width: 600px) {
+    .centered-div {
+        width: 90%; 
+        padding: 10px; 
+    }
+}
