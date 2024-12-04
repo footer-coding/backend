@@ -8,13 +8,14 @@ let package = Package(
     ],
     dependencies: [
         // 💧 A server-side Swift web framework.
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.99.3"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0"),
         // 🔵 Non-blocking, event-driven networking for Swift. Used for custom executors
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-mongo-driver.git", from: "1.0.0"),    
         .package(url: "https://github.com/swiftpackages/DotEnv.git", from: "3.0.0"),
-        .package(url: "https://github.com/vapor-community/stripe-kit.git", from: "22.0.0")
+        .package(url: "https://github.com/vapor-community/stripe-kit.git", from: "26.0.0"),
+        .package(url: "https://github.com/vapor/jwt.git", from: "5.0.0-rc"), // Use an older version compatible with swift-crypto 1.0.0..<3.0.0
     ],
     targets: [
         .executableTarget(
@@ -27,7 +28,8 @@ let package = Package(
                 .product(name: "FluentMongoDriver", package: "fluent-mongo-driver"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "DotEnv", package: "DotEnv"),
-                .product(name: "StripeKit", package: "stripe-kit")
+                .product(name: "StripeKit", package: "stripe-kit"),
+                .product(name: "JWT", package: "jwt")
             ],
             swiftSettings: swiftSettings
         ),

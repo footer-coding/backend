@@ -4,7 +4,7 @@ import StripeKit
 
 func routes(_ app: Application) throws {
     app.get { req async in
-        "It works! dupa"
+        "It works!"
     }            
 
     app.get("test") { req -> Response in
@@ -62,6 +62,8 @@ func routes(_ app: Application) throws {
         ]
         
         return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+
+    }
     // app.post("verify") {req -> String in
     //     let user = try req.auth.require(JWTModel.self)
 

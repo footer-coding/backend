@@ -3,6 +3,7 @@ import Fluent
 import FluentMongoDriver
 import DotEnv
 import StripeKit
+import JWT
 
 extension Application {
     public var stripe: StripeClient {
@@ -69,9 +70,7 @@ extension StripeSignatureError: AbortError {
     }
 }
 
-
 public func configure(_ app: Application) async throws {
-
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     let path = "./.env"
     let env = try DotEnv.read(path: path)
@@ -91,28 +90,16 @@ public func configure(_ app: Application) async throws {
         throw Abort(.internalServerError, reason: "MONGODB_URL not set")
     }
 
-    print (mongoUrl)
+    print(mongoUrl)
     
-     try app.databases.use(.mongo(connectionString: mongoUrl), as: .mongo)
+    try app.databases.use(.mongo(connectionString: mongoUrl), as: .mongo)
 
-     app.stripe
+    app.migrations.add(CreateUser())
+    try await app.autoMigrate()
 
-     
-     app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
-    // let path = "./.env"
-    // let env = try DotEnv.read(path: path)
-    // env.lines 
-    // env.load()
-    // print(ProcessInfo.processInfo.environment["CLERK_PK"]) 
+    app.stripe
 
-    // var logger = Logger(label: "key")
-    // logger.logLevel = .trace
-
-    // let logLevel = Environment.get("LOG_LEVEL")
-    
-    // if let logLevel, let logLevel = Logger.Level(rawValue: logLevel) {
-    //     logger.logLevel = logLevel
-    // }
+    app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
     let clerkPK: String = """
     -----BEGIN PUBLIC KEY-----
@@ -124,18 +111,13 @@ public func configure(_ app: Application) async throws {
     niFaRm9TWvyHVr+Q+nDL3ipas6xEjsTr+QxOj0FMTr2VfddB0FWTkaB1uTbyCiCo
     6wIDAQAB
     -----END PUBLIC KEY-----
+    -----END PUBLIC KEY-----
     """ 
 
     // Initialize an RSA key with public pem.
     let key = try Insecure.RSA.PublicKey(pem: clerkPK)
 
     await app.jwt.keys.add(rsa: key, digestAlgorithm: .sha256)
-
-    //regitser controllers
-    //try app.register(collection: UserController())
-    // await app.jwt.keys.add(rsa: , digestAlgorithm: .sha256)
-
-    //app.middleware.use(MyMiddleware())
 
     // register routes
     try routes(app)
