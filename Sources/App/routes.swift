@@ -18,6 +18,10 @@ func routes(_ app: Application) throws {
         return req.fileio.streamFile(at: filePath)
     }
 
+    app.get("register"){
+        
+    }
+
     
 
     app.post("create-payment-intent") { req async throws -> Response in
