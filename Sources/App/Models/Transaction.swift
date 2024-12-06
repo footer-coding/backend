@@ -11,8 +11,8 @@ final class Transaction: Model, Content {
     @ID(key: .id)
     var id: UUID?
 
-    @Field(key: "userId")
-    var userId: String
+    @Field(key: "username")
+    var username: String
 
     @Field(key: "amount")
     var amount: Int
@@ -22,9 +22,9 @@ final class Transaction: Model, Content {
 
     init() { }
 
-    init(id: UUID? = nil, userId: String, amount: Int, paymentIntentId: String) {
+    init(id: UUID? = nil, username: String, amount: Int, paymentIntentId: String) {
         self.id = id
-        self.userId = userId
+        self.username = username
         self.amount = amount
         self.paymentIntentId = paymentIntentId
     }

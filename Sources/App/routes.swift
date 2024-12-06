@@ -40,7 +40,7 @@ func routes(_ app: Application) throws {
     app.post("create-payment-intent") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
         let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
+        let user = payload.user
 
         print(items)
         
@@ -80,10 +80,10 @@ func routes(_ app: Application) throws {
         )
         
         // Update user balance
-        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
+        try await updateUserBalance(username: user, amount: amount, on: req.db)
         
         // Save transaction to database
-        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
+        let transaction = Transaction(username: user, amount: amount, paymentIntentId: paymentIntent.id)
         try await transaction.save(on: req.db)
         
         let response = [
@@ -98,7 +98,7 @@ func routes(_ app: Application) throws {
     app.post("create-payment-sheet") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
         let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
+        let user = payload.user
         
         let amount = calculateOrderAmount(items: items)
         
@@ -136,10 +136,10 @@ func routes(_ app: Application) throws {
         )
         
         // Update user balance
-        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
+        try await updateUserBalance(username: user, amount: amount, on: req.db)
         
         // Save transaction to database
-        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
+        let transaction = Transaction(username: user, amount: amount, paymentIntentId: paymentIntent.id)
         try await transaction.save(on: req.db)
         
         let response = [
@@ -151,10 +151,10 @@ func routes(_ app: Application) throws {
 
     app.get("transactions-history") { req async throws -> Response in
         let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
+        let user = payload.user
         
         let transactions = try await Transaction.query(on: req.db)
-            .filter(\.$userId == userId)
+            .filter(\.$username == user)
             .all()
         
         return Response(status: .ok, body: .init(data: try JSONEncoder().encode(transactions)))
@@ -187,9 +187,10 @@ struct Item: Content {
     let amount: Int
 }
 
-func updateUserBalance(userId: String, amount: Int, on db: Database) async throws {
-    guard let userUUID = UUID(uuidString: userId),
-          let user = try await User.find(userUUID, on: db) else {
+func updateUserBalance(username: String, amount: Int, on db: Database) async throws {
+    guard let user = try await User.query(on: db)
+        .filter(\.$username == username)
+        .first() else {
         throw Abort(.notFound, reason: "User not found")
     }
     user.balance += amount

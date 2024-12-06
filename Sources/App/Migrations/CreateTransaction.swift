@@ -6,7 +6,7 @@ struct CreateTransaction:AsyncMigration {
     func prepare(on database: Database) async throws {
         try await database.schema("transactions")
             .id()
-            .field("userId", .string, .required)
+            .field("username", .string, .required)
             .field("amount", .int, .required)
             .field("paymentIntentId", .string, .required)
             .create()
