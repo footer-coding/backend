@@ -7,7 +7,7 @@ struct CreateUser: AsyncMigration {
             .id()
             .field("username", .string, .required)
             .field("email", .string, .required)
-            .field("balance", .int, .required, .custom("default: 0"))
+            .field("balance", .int, .required, .custom("DEFAULT 0"))
             .create()
     }
 

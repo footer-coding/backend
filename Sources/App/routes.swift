@@ -2,7 +2,13 @@ import Vapor
 import DotEnv
 import StripeKit
 import Fluent 
-import FluentMongoDriver// Add this import
+import FluentMongoDriver
+
+struct TransactionHistoryResponse: Content {
+    let date: Date
+    let amount: Int
+    let status: String
+}
 
 func routes(_ app: Application) throws {
     app.get { req async in
@@ -38,132 +44,150 @@ func routes(_ app: Application) throws {
     } 
 
     app.post("create-payment-intent") { req async throws -> Response in
-        let items = try req.content.decode([String: [Item]].self)["items"] ?? []
-        let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
+        do {
+            let items = try req.content.decode([String: [Item]].self)["items"] ?? []
+            let payload = try await req.jwt.verify(as: JWTModel.self)
+            let username = payload.user
 
-        print(items)
-        
-        let amount = calculateOrderAmount(items: items)
-        
-        let paymentIntent = try await req.application.stripe.paymentIntents.create(
-            amount: amount,
-            currency: .pln,
-            automaticPaymentMethods: nil,
-            confirm: false,
-            customer: nil,
-            description: nil,
-            metadata: nil,
-            offSession: nil,
-            paymentMethod: nil,
-            receiptEmail: nil,
-            setupFutureUsage: nil,
-            shipping: nil,
-            statementDescriptor: nil,
-            statementDescriptorSuffix: nil,
-            applicationFeeAmount: nil,
-            captureMethod: nil,
-            confirmationMethod: nil,
-            errorOnRequiresAction: nil,
-            mandate: nil,
-            mandateData: nil,
-            onBehalfOf: nil,
-            paymentMethodData: nil,
-            paymentMethodOptions: nil,
-            paymentMethodTypes: ["card"],
-            radarOptions: nil,
-            returnUrl: nil,
-            transferData: nil,
-            transferGroup: nil,
-            useStripeSDK: nil,
-            expand: nil
-        )
-        
-        // Update user balance
-        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
-        
-        // Save transaction to database
-        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
-        try await transaction.save(on: req.db)
-        
-        let response = [
-            "clientSecret": paymentIntent.clientSecret,
-            "paymentIntent": paymentIntent.clientSecret,
-            "dpmCheckerLink": "https://dashboard.stripe.com/settings/payment_methods/review?transaction_id=\(paymentIntent.id)"
-        ]
-        
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+            print("Items: \(items)")
+            
+            let amount = calculateOrderAmount(items: items)
+            
+            guard let user = try await User.query(on: req.db)
+                .filter(\.$username == username)
+                .first() else {
+                throw Abort(.notFound, reason: "User not found")
+            }
+
+            // Ensure amount is initialized before accessing it
+            guard amount > 0 else {
+                throw Abort(.badRequest, reason: "Invalid amount")
+            }
+
+            let paymentIntent = try await req.application.stripe.paymentIntents.create(
+                amount: amount,
+                currency: .pln,
+                automaticPaymentMethods: nil,
+                confirm: false,
+                customer: nil,
+                description: nil,
+                metadata: nil,
+                offSession: nil,
+                paymentMethod: nil,
+                receiptEmail: nil,
+                setupFutureUsage: nil,
+                shipping: nil,
+                statementDescriptor: nil,
+                statementDescriptorSuffix: nil,
+                applicationFeeAmount: nil,
+                captureMethod: nil,
+                confirmationMethod: nil,
+                errorOnRequiresAction: nil,
+                mandate: nil,
+                mandateData: nil,
+                onBehalfOf: nil,
+                paymentMethodData: nil,
+                paymentMethodOptions: nil,
+                paymentMethodTypes: ["card"],
+                radarOptions: nil,
+                returnUrl: nil,
+                transferData: nil,
+                transferGroup: nil,
+                useStripeSDK: nil,
+                expand: nil
+            )
+            
+            print("PaymentIntent created: \(paymentIntent)")
+
+            // Update user balance
+            try await updateUserBalance(userId: user.id!.uuidString, amount: amount, on: req.db)
+            
+            // Save transaction to database
+            let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
+            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            try await transaction.save(on: req.db)
+            
+            let response = [
+                "clientSecret": paymentIntent.clientSecret,
+                "paymentIntent": paymentIntent.clientSecret,
+                "dpmCheckerLink": "https://dashboard.stripe.com/settings/payment_methods/review?transaction_id=\(paymentIntent.id)"
+            ]
+            
+            print("Response: \(response)")
+
+            return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+        } catch {
+            print("Error creating payment intent: \(error)")
+            throw Abort(.internalServerError, reason: "Failed to create payment intent: \(error.localizedDescription)")
+        }
     }
 
     app.post("create-payment-sheet") { req async throws -> Response in
-        let items = try req.content.decode([String: [Item]].self)["items"] ?? []
-        let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
-        
-        let amount = calculateOrderAmount(items: items)
-        
-        let paymentIntent = try await req.application.stripe.paymentIntents.create(
-            amount: amount,
-            currency: .pln,
-            automaticPaymentMethods: ["enabled": true],
-            confirm: false,
-            customer: nil,
-            description: nil,
-            metadata: nil,
-            offSession: nil,
-            paymentMethod: nil,
-            receiptEmail: nil,
-            setupFutureUsage: nil,
-            shipping: nil,
-            statementDescriptor: nil,
-            statementDescriptorSuffix: nil,
-            applicationFeeAmount: nil,
-            captureMethod: nil,
-            confirmationMethod: nil,
-            errorOnRequiresAction: nil,
-            mandate: nil,
-            mandateData: nil,
-            onBehalfOf: nil,
-            paymentMethodData: nil,
-            paymentMethodOptions: nil,
-            paymentMethodTypes: ["card"],
-            radarOptions: nil,
-            returnUrl: nil,
-            transferData: nil,
-            transferGroup: nil,
-            useStripeSDK: nil,
-            expand: nil
-        )
-        
-        // Update user balance
-        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
-        
-        // Save transaction to database
-        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
-        try await transaction.save(on: req.db)
-        
-        let response = [
-            "paymentIntent": paymentIntent.clientSecret
-        ]
-        
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
-    }
+        do {
+            let items = try req.content.decode([String: [Item]].self)["items"] ?? []
+            let payload = try await req.jwt.verify(as: JWTModel.self)
+            let username = payload.user
+            
+            let amount = calculateOrderAmount(items: items)
+            
+            guard let user = try await User.query(on: req.db)
+                .filter(\.$username == username)
+                .first() else {
+                throw Abort(.notFound, reason: "User not found")
+            }
 
-    app.get("transactions-history") { req async throws -> Response in
-        let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
-        
-        let transactions = try await Transaction.query(on: req.db)
-            .filter(\.$userId == userId)
-            .all()
-        
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(transactions)))
-    }
+            let paymentIntent = try await req.application.stripe.paymentIntents.create(
+                amount: amount,
+                currency: .pln,
+                automaticPaymentMethods: ["enabled": true],
+                confirm: false,
+                customer: nil,
+                description: nil,
+                metadata: nil,
+                offSession: nil,
+                paymentMethod: nil,
+                receiptEmail: nil,
+                setupFutureUsage: nil,
+                shipping: nil,
+                statementDescriptor: nil,
+                statementDescriptorSuffix: nil,
+                applicationFeeAmount: nil,
+                captureMethod: nil,
+                confirmationMethod: nil,
+                errorOnRequiresAction: nil,
+                mandate: nil,
+                mandateData: nil,
+                onBehalfOf: nil,
+                paymentMethodData: nil,
+                paymentMethodOptions: nil,
+                paymentMethodTypes: ["card"],
+                radarOptions: nil,
+                returnUrl: nil,
+                transferData: nil,
+                transferGroup: nil,
+                useStripeSDK: nil,
+                expand: nil
+            )
+            
+            print("PaymentIntent created: \(paymentIntent)")
 
-    app.get("all-transactions-history") { req async throws -> Response in
-        let transactions = try await Transaction.query(on: req.db).all()
-        
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(transactions)))
+            // Update user balance
+            try await updateUserBalance(userId: user.id!.uuidString, amount: amount, on: req.db)
+            
+            // Save transaction to database
+            let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
+            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            try await transaction.save(on: req.db)
+            
+            let response = ["clientSecret": paymentIntent.clientSecret]
+            
+            print("Response: \(response)")
+
+            return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+        } catch {
+            print("Error creating payment sheet: \(error)")
+            throw Abort(.internalServerError, reason: "Failed to create payment sheet: \(error.localizedDescription)")
+        }
     }
 
     app.post("addToDb") { req -> String in
@@ -175,7 +199,12 @@ func routes(_ app: Application) throws {
         return "dziala"
     }
 
+    app.get("list-users") { req async throws -> Response in
+        let users = try await User.query(on: req.db).all()
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(users)))
+    }
 }
+
 
 func calculateOrderAmount(items: [Item]) -> Int {
     // Calculate the order total on the server to prevent
@@ -195,4 +224,6 @@ func updateUserBalance(userId: String, amount: Int, on db: Database) async throw
     user.balance += amount
     try await user.save(on: db)
 }
+
+
 

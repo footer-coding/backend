@@ -32,14 +32,11 @@
       document.addEventListener("DOMContentLoaded", async () => {
         const stripe = Stripe("pk_test_51QFkxxP5t7Wyu7mQgeGKYm4dVd4plWB08OSiXa9vgui0S9wsQZgcjRBNvac7I27XvxU3MCXikuDuX3at3zUPkBSn0062b41nrg");
         
-        const jwtToken = "{{JWT_TOKEN}}";
-        
         // Fetch the client secret from your server
         const { clientSecret } = await fetch("/create-payment-intent", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${jwtToken}`
           },
           body: JSON.stringify({ items: [{ amount: 1000 }] }) // Example item
         }).then(r => r.json());

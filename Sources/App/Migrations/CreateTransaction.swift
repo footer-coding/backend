@@ -1,14 +1,15 @@
-
 import Fluent
 import Vapor
 
-struct CreateTransaction:AsyncMigration {
+struct CreateTransaction: AsyncMigration {
     func prepare(on database: Database) async throws {
         try await database.schema("transactions")
             .id()
-            .field("userId", .string, .required)
+            .field("date", .datetime, .required)
+            .field("isConfirmed", .bool, .required)
+            .field("paymentLink", .string, .required)
             .field("amount", .int, .required)
-            .field("paymentIntentId", .string, .required)
+            .field("user_id", .uuid, .required, .references("users", "id"))
             .create()
     }
 

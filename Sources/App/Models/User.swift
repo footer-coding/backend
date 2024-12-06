@@ -1,5 +1,6 @@
 import Fluent
 import Vapor
+import FluentMongoDriver
 
 final class User: Model, Content {
     
@@ -15,7 +16,10 @@ final class User: Model, Content {
     var email: String
 
     @Field(key: "balance")
-    var balance: Int
+    var balance: Int 
+
+    @Children(for: \.$user)
+    var transactions: [Transaction]
 
     init() { }
 
