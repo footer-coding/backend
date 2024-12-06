@@ -1,6 +1,7 @@
 import Vapor
 import DotEnv
-import StripeKit    
+import StripeKit
+import Fluent // Add this import
 
 func routes(_ app: Application) throws {
     app.get { req async in
@@ -17,8 +18,12 @@ func routes(_ app: Application) throws {
         return req.fileio.streamFile(at: filePath)
     }
 
+    
+
     app.post("create-payment-intent") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let userId = payload.user
 
         print(items)
         
@@ -57,6 +62,9 @@ func routes(_ app: Application) throws {
             expand: nil
         )
         
+        // Update user balance
+        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
+        
         let response = [
             "clientSecret": paymentIntent.clientSecret,
             "paymentIntent": paymentIntent.clientSecret,
@@ -68,6 +76,8 @@ func routes(_ app: Application) throws {
 
     app.post("create-payment-sheet") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let userId = payload.user
         
         let amount = calculateOrderAmount(items: items)
         
@@ -104,6 +114,9 @@ func routes(_ app: Application) throws {
             expand: nil
         )
         
+        // Update user balance
+        try await updateUserBalance(userId: userId, amount: amount, on: req.db)
+        
         let response = [
             "paymentIntent": paymentIntent.clientSecret
         ]
@@ -118,6 +131,19 @@ func routes(_ app: Application) throws {
         print(payload.email)
         return "dziala"
     }
+
+    app.get("balance") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let userId = payload.user
+
+        guard let userUUID = UUID(uuidString: userId),
+              let user = try await User.find(userUUID, on: req.db) else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+
+        let response = ["balance": user.balance]
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+    }
 }
 
 func calculateOrderAmount(items: [Item]) -> Int {
@@ -128,5 +154,14 @@ func calculateOrderAmount(items: [Item]) -> Int {
 
 struct Item: Content {
     let amount: Int
+}
+
+func updateUserBalance(userId: String, amount: Int, on db: Database) async throws {
+    guard let userUUID = UUID(uuidString: userId),
+          let user = try await User.find(userUUID, on: db) else {
+        throw Abort(.notFound, reason: "User not found")
+    }
+    user.balance += amount
+    try await user.save(on: db)
 }
 
