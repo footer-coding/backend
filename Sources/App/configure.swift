@@ -90,7 +90,6 @@ public func configure(_ app: Application) async throws {
         throw Abort(.internalServerError, reason: "MONGODB_URL not set")
     }
 
-    
     try app.databases.use(.mongo(connectionString: mongoUrl), as: .mongo)
 
     app.migrations.add(CreateUser())

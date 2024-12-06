@@ -1,7 +1,8 @@
 import Vapor
 import DotEnv
 import StripeKit
-import Fluent // Add this import
+import Fluent 
+import FluentMongoDriver// Add this import
 
 func routes(_ app: Application) throws {
     app.get { req async in
@@ -18,11 +19,21 @@ func routes(_ app: Application) throws {
         return req.fileio.streamFile(at: filePath)
     }
 
-    app.get("register"){
-        
+    app.get("register") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let user = User(username: payload.user, email: payload.email)
+        try await user.save(on: req.db)
+        return Response(status: .ok, body: .init(string: "User registered successfully"))
     }
 
-    
+    app.get("get-balance") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        guard let userID = UUID(uuidString: payload.user),
+              let user = try await User.find(userID, on: req.db) else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        return Response(status: .ok, body: .init(string: "User balance: \(user.balance)"))
+    }
 
     app.post("create-payment-intent") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
@@ -137,18 +148,6 @@ func routes(_ app: Application) throws {
         return "dziala"
     }
 
-    app.get("balance") { req async throws -> Response in
-        let payload = try await req.jwt.verify(as: JWTModel.self)
-        let userId = payload.user
-
-        guard let userUUID = UUID(uuidString: userId),
-              let user = try await User.find(userUUID, on: req.db) else {
-            throw Abort(.notFound, reason: "User not found")
-        }
-
-        let response = ["balance": user.balance]
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
-    }
 }
 
 func calculateOrderAmount(items: [Item]) -> Int {
