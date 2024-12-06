@@ -93,6 +93,7 @@ public func configure(_ app: Application) async throws {
     try app.databases.use(.mongo(connectionString: mongoUrl), as: .mongo)
 
     app.migrations.add(CreateUser())
+    app.migrations.add(CreateTransaction())
     
     try await app.autoMigrate()
 

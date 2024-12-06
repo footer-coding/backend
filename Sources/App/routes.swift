@@ -28,12 +28,14 @@ func routes(_ app: Application) throws {
 
     app.get("get-balance") { req async throws -> Response in
         let payload = try await req.jwt.verify(as: JWTModel.self)
-        guard let userID = UUID(uuidString: payload.user),
-              let user = try await User.find(userID, on: req.db) else {
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == payload.user)
+            .first() else {
             throw Abort(.notFound, reason: "User not found")
         }
-        return Response(status: .ok, body: .init(string: "User balance: \(user.balance)"))
-    }
+        let response = ["balance": user.balance]
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+    } 
 
     app.post("create-payment-intent") { req async throws -> Response in
         let items = try req.content.decode([String: [Item]].self)["items"] ?? []
@@ -79,6 +81,10 @@ func routes(_ app: Application) throws {
         
         // Update user balance
         try await updateUserBalance(userId: userId, amount: amount, on: req.db)
+        
+        // Save transaction to database
+        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
+        try await transaction.save(on: req.db)
         
         let response = [
             "clientSecret": paymentIntent.clientSecret,
@@ -132,11 +138,32 @@ func routes(_ app: Application) throws {
         // Update user balance
         try await updateUserBalance(userId: userId, amount: amount, on: req.db)
         
+        // Save transaction to database
+        let transaction = Transaction(userId: userId, amount: amount, paymentIntentId: paymentIntent.id)
+        try await transaction.save(on: req.db)
+        
         let response = [
             "paymentIntent": paymentIntent.clientSecret
         ]
         
         return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+    }
+
+    app.get("transactions-history") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let userId = payload.user
+        
+        let transactions = try await Transaction.query(on: req.db)
+            .filter(\.$userId == userId)
+            .all()
+        
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(transactions)))
+    }
+
+    app.get("all-transactions-history") { req async throws -> Response in
+        let transactions = try await Transaction.query(on: req.db).all()
+        
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(transactions)))
     }
 
     app.post("addToDb") { req -> String in
