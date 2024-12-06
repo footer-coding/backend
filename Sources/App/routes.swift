@@ -131,6 +131,7 @@ func routes(_ app: Application) throws {
     app.post("addToDb") { req -> String in
         //print JWT token from request
         let payload = try await req.jwt.verify(as: JWTModel.self)
+        print(req.headers)
         print(payload.user)
         print(payload.email)
         return "dziala"
