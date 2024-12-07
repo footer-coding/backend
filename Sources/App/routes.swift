@@ -23,7 +23,19 @@ func routes(_ app: Application) throws {
 
     app.get("register") { req async throws -> Response in
         let payload = try await req.jwt.verify(as: JWTModel.self)
-        let user = User(username: payload.user, email: payload.email)
+        let username = payload.user
+        let email = payload.email
+
+        // Sprawdź, czy użytkownik już istnieje
+        if let existingUser = try await User.query(on: req.db)
+            .filter(\.$username == username)
+            .first() {
+            // Użytkownik już istnieje, zwróć odpowiedź
+            return Response(status: .ok, body: .init(string: "User already registered"))
+        }
+
+        // Użytkownik nie istnieje, dodaj go do bazy danych
+        let user = User(username: username, email: email)
         try await user.save(on: req.db)
         return Response(status: .ok, body: .init(string: "User registered successfully"))
     }
