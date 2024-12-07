@@ -341,6 +341,46 @@ func routes(_ app: Application) throws {
         let status: String
         let type: String
     }
+
+    app.post("place-unit") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == payload.user)
+            .first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        //try req.content.decode([String: [Item]].self)["items"] ?? []
+        let type = try req.content.decode([String: String].self)["type"] ?? ""
+
+        var successfull = true
+        if (type == "soldier" && (user.usedSoldiers < 300 || user.unlimitedUnits)) {
+            user.usedSoldiers += 1
+            try await user.save(on: req.db)
+        } else if (type == "tank" && (user.usedTanks < 300 || user.unlimitedUnits)) {
+            user.usedTanks += 1
+            try await user.save(on: req.db)
+        } else if (type == "plane" && (user.usedPlanes < 300 || user.unlimitedUnits)) {
+            user.usedPlanes += 1
+            try await user.save(on: req.db)
+        } else {
+            successfull = false
+        }
+
+        struct PlacedUnitResponse: Content {
+            let successfull: Bool
+            let usedSoldiers: Int
+            let usedTanks: Int
+            let usedPlanes: Int
+        }
+
+        let response = PlacedUnitResponse(
+            successfull: successfull,
+            usedSoldiers: user.usedSoldiers,
+            usedTanks: user.usedTanks,
+            usedPlanes: user.usedPlanes
+        )
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+    }
 }
 
 func calculateOrderAmount(items: [Item]) -> Int {
