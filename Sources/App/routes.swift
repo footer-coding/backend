@@ -28,17 +28,6 @@ func routes(_ app: Application) throws {
         return Response(status: .ok, body: .init(string: "User registered successfully"))
     }
 
-    app.get("get-balance") { req async throws -> Response in
-        let payload = try await req.jwt.verify(as: JWTModel.self)
-        guard let user = try await User.query(on: req.db)
-            .filter(\.$username == payload.user)
-            .first() else {
-            throw Abort(.notFound, reason: "User not found")
-        }
-        let response = ["balance": user.balance]
-        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
-    } 
-
     app.post("create-payment-intent") { req async throws -> Response in
         do {
             let items = try req.content.decode([String: [Item]].self)["items"] ?? []
@@ -237,6 +226,17 @@ func routes(_ app: Application) throws {
         return Response(status: .ok, body: .init(data: try JSONEncoder().encode(users)))
     }
 
+    app.get("get-balance") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == payload.user)
+            .first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        let response = ["balance": user.balance]
+        return Response(status: .ok, body: .init(data: try JSONEncoder().encode(response)))
+    }
+
     app.get("transaction-history") { req async throws -> Response in
         let payload = try await req.jwt.verify(as: JWTModel.self)
         let username = payload.user
@@ -252,15 +252,35 @@ func routes(_ app: Application) throws {
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
         dateFormatter.timeZone = TimeZone(secondsFromGMT: 3600) // Set to UTC+1
         
-        let response = user.transactions.map { transaction in
+        // Fetch Bitcoin transactions
+        let bitcoinTransactions = try await BitcoinTransaction.query(on: req.db)
+            .filter(\.$username == username)
+            .all()
+        
+        // Map user transactions to response
+        let userTransactions = user.transactions.map { transaction in
             return TransactionHistoryResponse(
                 date: dateFormatter.string(from: transaction.date),
-                amount: transaction.amount,
-                status: "confirmed" // Always set to "confirmed"
+                amount: Double(transaction.amount), // Convert to Double
+                status: "confirmed", // Always set to "confirmed"
+                type: "User"
             )
         }
         
-        let jsonResponse = try JSONEncoder().encode(response)
+        // Map Bitcoin transactions to response
+        let bitcoinTransactionResponses = bitcoinTransactions.map { transaction in
+            return TransactionHistoryResponse(
+                date: dateFormatter.string(from: transaction.date),
+                amount: Double(transaction.amount), // Convert to Double
+                status: transaction.isConfirmed ? "confirmed" : "unconfirmed",
+                type: "Bitcoin"
+            )
+        }
+        
+        // Combine both transaction responses
+        let combinedTransactions = userTransactions + bitcoinTransactionResponses
+        
+        let jsonResponse = try JSONEncoder().encode(combinedTransactions)
         return Response(status: .ok, body: .init(data: jsonResponse))
     }
 
@@ -317,11 +337,11 @@ func routes(_ app: Application) throws {
 
     struct TransactionHistoryResponse: Content {
         let date: String
-        let amount: Int
+        let amount: Double
         let status: String
+        let type: String
     }
 }
-
 
 func calculateOrderAmount(items: [Item]) -> Int {
     // Calculate the order total on the server to prevent
@@ -341,9 +361,13 @@ func updateUserBalance(username: String, amount: Int, on db: Database) async thr
     }
     user.balance += amount
     try await user.save(on: db)
+<<<<<<< HEAD
 }
 
 
 
 
 
+=======
+}
+>>>>>>> b4ef51d7855b44b9d4d8271c606e471348875202
