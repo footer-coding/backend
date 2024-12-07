@@ -4,7 +4,7 @@ import StripeKit
 import Fluent 
 import FluentMongoDriver
 
-let fullVersionPrice = 80000
+let fullVersionPrice = 8000
 
 func routes(_ app: Application) throws {
     app.get { req async in
@@ -361,13 +361,4 @@ func updateUserBalance(username: String, amount: Int, on db: Database) async thr
     }
     user.balance += amount
     try await user.save(on: db)
-<<<<<<< HEAD
 }
-
-
-
-
-
-=======
-}
->>>>>>> b4ef51d7855b44b9d4d8271c606e471348875202
