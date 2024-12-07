@@ -4,6 +4,8 @@ import StripeKit
 import Fluent 
 import FluentMongoDriver
 
+let fullVersionPrice = 80000
+
 func routes(_ app: Application) throws {
     app.get { req async in
         "It works!"
@@ -57,6 +59,16 @@ func routes(_ app: Application) throws {
                 throw Abort(.notFound, reason: "User not found")
             }
 
+            if amount == fullVersionPrice {
+                if user.balance < fullVersionPrice {
+                    return Response(status: .badRequest, body: .init(string: "Insufficient funds in balance"))
+                }
+                user.balance -= fullVersionPrice
+                user.hasFullVersion = true
+                try await user.save(on: req.db)
+                return Response(status: .ok, body: .init(string: "Full version activated"))
+            }
+
             let paymentIntent = try await req.application.stripe.paymentIntents.create(
                 amount: amount,
                 currency: .pln,
@@ -97,12 +109,19 @@ func routes(_ app: Application) throws {
             
             // Save transaction to database
             let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
-            let transaction = Transaction(date: Date(), isConfirmed: true, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
             try await transaction.save(on: req.db)
+
+            // Check if the amount is fullVersionPrice
+            if amount == fullVersionPrice {
+                user.hasFullVersion = true
+                try await user.save(on: req.db)
+                return Response(status: .ok, body: .init(string: "Full version activated"))
+            }
             
-            let response = [
-                "clientSecret": paymentIntent.clientSecret,
-                "paymentIntent": paymentIntent.clientSecret,
+            var response: [String: String] = [
+                "clientSecret": paymentIntent.clientSecret ?? "",
+                "paymentIntent": paymentIntent.clientSecret ?? "",
                 "dpmCheckerLink": "https://dashboard.stripe.com/settings/payment_methods/review?transaction_id=\(paymentIntent.id)"
             ]
             
@@ -131,6 +150,16 @@ func routes(_ app: Application) throws {
                 .filter(\.$username == username)
                 .first() else {
                 throw Abort(.notFound, reason: "User not found")
+            }
+
+            if amount == fullVersionPrice {
+                if user.balance < fullVersionPrice {
+                    return Response(status: .badRequest, body: .init(string: "Insufficient funds in balance"))
+                }
+                user.balance -= fullVersionPrice
+                user.hasFullVersion = true
+                try await user.save(on: req.db)
+                return Response(status: .ok, body: .init(string: "Full version activated"))
             }
 
             let paymentIntent = try await req.application.stripe.paymentIntents.create(
@@ -173,8 +202,15 @@ func routes(_ app: Application) throws {
             
             // Save transaction to database
             let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
-            let transaction = Transaction(date: Date(), isConfirmed: true, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
             try await transaction.save(on: req.db)
+
+            // Check if the amount is fullVersionPrice
+            if amount == fullVersionPrice {
+                user.hasFullVersion = true
+                try await user.save(on: req.db)
+                return Response(status: .ok, body: .init(string: "Full version activated"))
+            }
             
             let response = ["clientSecret": paymentIntent.clientSecret]
             
@@ -228,6 +264,57 @@ func routes(_ app: Application) throws {
         return Response(status: .ok, body: .init(data: jsonResponse))
     }
 
+    app.get("play") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let username = payload.user
+
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == username)
+            .first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+
+        if user.hasFullVersion {
+            // User has full version, allow unlimited moves
+            return Response(status: .ok, body: .init(string: "You have unlimited moves!"))
+        } else {
+            // User does not have full version, check last play time
+            let lastPlayTime = user.lastPlayTime ?? Date.distantPast
+            let currentTime = Date()
+            let timeInterval = currentTime.timeIntervalSince(lastPlayTime)
+
+            if lastPlayTime == Date.distantPast || timeInterval >= 24 * 60 * 60 {
+                // First play or more than 24 hours since last play, update last play time
+                user.lastPlayTime = currentTime
+                try await user.save(on: req.db)
+                return Response(status: .ok, body: .init(string: "You can play!"))
+            } else {
+                // Less than 24 hours since last play
+                return Response(status: .forbidden, body: .init(string: "You can only play once every 24 hours."))
+            }
+        }
+    }
+
+    app.post("purchase-full-version") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let username = payload.user
+
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == username)
+            .first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+
+        if user.balance < fullVersionPrice {
+            return Response(status: .badRequest, body: .init(string: "Insufficient funds in balance"))
+        }
+
+        user.balance -= fullVersionPrice
+        user.hasFullVersion = true
+        try await user.save(on: req.db)
+        return Response(status: .ok, body: .init(string: "Full version activated"))
+    }
+
     struct TransactionHistoryResponse: Content {
         let date: String
         let amount: Int
@@ -255,6 +342,8 @@ func updateUserBalance(username: String, amount: Int, on db: Database) async thr
     user.balance += amount
     try await user.save(on: db)
 }
+
+
 
 
 
