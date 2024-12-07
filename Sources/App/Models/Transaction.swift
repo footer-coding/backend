@@ -13,14 +13,14 @@ final class Transaction: Model, Content {
     @Field(key: "isConfirmed")
     var isConfirmed: Bool
 
+    @Parent(key: "userId")
+    var user: User
+
     @Field(key: "paymentLink")
     var paymentLink: String
 
     @Field(key: "amount")
     var amount: Int
-
-    @Parent(key: "user_id")
-    var user: User
 
     init() { }
 

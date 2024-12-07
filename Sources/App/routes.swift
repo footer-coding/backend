@@ -4,12 +4,6 @@ import StripeKit
 import Fluent 
 import FluentMongoDriver
 
-struct TransactionHistoryResponse: Content {
-    let date: Date
-    let amount: Int
-    let status: String
-}
-
 func routes(_ app: Application) throws {
     app.get { req async in
         "It works!"
@@ -53,15 +47,14 @@ func routes(_ app: Application) throws {
             
             let amount = calculateOrderAmount(items: items)
             
+            guard amount > 0 else {
+                throw Abort(.badRequest, reason: "Invalid amount")
+            }
+
             guard let user = try await User.query(on: req.db)
                 .filter(\.$username == username)
                 .first() else {
                 throw Abort(.notFound, reason: "User not found")
-            }
-
-            // Ensure amount is initialized before accessing it
-            guard amount > 0 else {
-                throw Abort(.badRequest, reason: "Invalid amount")
             }
 
             let paymentIntent = try await req.application.stripe.paymentIntents.create(
@@ -100,11 +93,11 @@ func routes(_ app: Application) throws {
             print("PaymentIntent created: \(paymentIntent)")
 
             // Update user balance
-            try await updateUserBalance(userId: user.id!.uuidString, amount: amount, on: req.db)
+            try await updateUserBalance(username: user.username, amount: amount, on: req.db)
             
             // Save transaction to database
             let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
-            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            let transaction = Transaction(date: Date(), isConfirmed: true, userId: user.id!, paymentLink: transactionLink, amount: amount)
             try await transaction.save(on: req.db)
             
             let response = [
@@ -130,6 +123,10 @@ func routes(_ app: Application) throws {
             
             let amount = calculateOrderAmount(items: items)
             
+            guard amount > 0 else {
+                throw Abort(.badRequest, reason: "Invalid amount")
+            }
+
             guard let user = try await User.query(on: req.db)
                 .filter(\.$username == username)
                 .first() else {
@@ -172,11 +169,11 @@ func routes(_ app: Application) throws {
             print("PaymentIntent created: \(paymentIntent)")
 
             // Update user balance
-            try await updateUserBalance(userId: user.id!.uuidString, amount: amount, on: req.db)
+            try await updateUserBalance(username: user.username, amount: amount, on: req.db)
             
             // Save transaction to database
             let transactionLink = "https://dashboard.stripe.com/payments/\(paymentIntent.id)"
-            let transaction = Transaction(date: Date(), isConfirmed: false, userId: user.id!, paymentLink: transactionLink, amount: amount)
+            let transaction = Transaction(date: Date(), isConfirmed: true, userId: user.id!, paymentLink: transactionLink, amount: amount)
             try await transaction.save(on: req.db)
             
             let response = ["clientSecret": paymentIntent.clientSecret]
@@ -203,6 +200,39 @@ func routes(_ app: Application) throws {
         let users = try await User.query(on: req.db).all()
         return Response(status: .ok, body: .init(data: try JSONEncoder().encode(users)))
     }
+
+    app.get("transaction-history") { req async throws -> Response in
+        let payload = try await req.jwt.verify(as: JWTModel.self)
+        let username = payload.user
+        
+        guard let user = try await User.query(on: req.db)
+            .filter(\.$username == username)
+            .with(\.$transactions) // Eager load transactions
+            .first() else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 3600) // Set to UTC+1
+        
+        let response = user.transactions.map { transaction in
+            return TransactionHistoryResponse(
+                date: dateFormatter.string(from: transaction.date),
+                amount: transaction.amount,
+                status: "confirmed" // Always set to "confirmed"
+            )
+        }
+        
+        let jsonResponse = try JSONEncoder().encode(response)
+        return Response(status: .ok, body: .init(data: jsonResponse))
+    }
+
+    struct TransactionHistoryResponse: Content {
+        let date: String
+        let amount: Int
+        let status: String
+    }
 }
 
 
@@ -216,9 +246,10 @@ struct Item: Content {
     let amount: Int
 }
 
-func updateUserBalance(userId: String, amount: Int, on db: Database) async throws {
-    guard let userUUID = UUID(uuidString: userId),
-          let user = try await User.find(userUUID, on: db) else {
+func updateUserBalance(username: String, amount: Int, on db: Database) async throws {
+    guard let user = try await User.query(on: db)
+        .filter(\.$username == username)
+        .first() else {
         throw Abort(.notFound, reason: "User not found")
     }
     user.balance += amount
